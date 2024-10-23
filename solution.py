@@ -1,6 +1,4 @@
 # This is Dogukan Arasli's solution to FitMinds Part Time Problem Analyst programming case #
-# Throughout the script, the lines that print or visualize are taken into comment for clarity in the output
-
 # IMPORTS #
 
 import numpy as np
@@ -11,11 +9,11 @@ from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split#,GridSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, confusion_matrix
-#from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier
 from imblearn.under_sampling import RandomUnderSampler
-#from imblearn.over_sampling import SMOTE,RandomOverSampler
-#from imblearn.combine import SMOTEENN,SMOTETomek
-#from xgboost import XGBClassifier
+from imblearn.over_sampling import SMOTE,RandomOverSampler
+from imblearn.combine import SMOTEENN,SMOTETomek
+from xgboost import XGBClassifier
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -32,32 +30,29 @@ input_data_df = pd.read_excel('FM2024 - Dataset.xlsx', sheet_name = 'Input Data'
 # PREPROCESSING AND FEATURE ENGINEERING #
 
 # Missing value check #
-#print(input_data_df.isna().any())
+print(input_data_df.isna().any())
 # No action is needed since no missing value
 
 # Sample Size #
 ss = len(input_data_df)
-#print(ss) 11897
 
-# Distribution over HCP's #
+# Distribution over Customers #
 visits_to_hcps = input_data_df['HCP Name'].value_counts()
-#print(visits_to_hcps)
-#print('Number of HCPs reached only 1 time:', (visits_to_hcps == 1).sum())
-# There are 7589 HCP's while 5678 of them has been reached only 1 time and max number is 47
+print(visits_to_hcps)
+print('Number of HCPs reached only 1 time:', (visits_to_hcps == 1).sum())
 
-# Adding a new column of Num of Visits to HCPs #
+# Adding a new column of Num of Visits to Customers #
 input_data_df['Number of Visits to HCPs'] = input_data_df['HCP Name'].map(visits_to_hcps)
 
 # Distribution over Representatives #
 reps = input_data_df['Representative Name'].unique()
 rep_visits = input_data_df['Representative Name'].value_counts()
-#print('Number of Representatives:', len(reps))
-#plt.bar(x= reps, height = rep_visits[reps].values)
-#plt.title('Number of Visits a representative made')
-#plt.xlabel('Representative Names')
-#plt.ylabel('Number of Visits')
-#plt.show()
-# Among 15 representative other than the representative 'TS', each representaive made between 700-1000 visits
+print('Number of Representatives:', len(reps))
+plt.bar(x= reps, height = rep_visits[reps].values)
+plt.title('Number of Visits a representative made')
+plt.xlabel('Representative Names')
+plt.ylabel('Number of Visits')
+plt.show()
 
 # Adding 'WeekDay' column (Friday, Monday etc.) as it makes more sense to work with #
 for i in range(ss):
@@ -72,11 +67,11 @@ input_data_df['Week Day'] = input_data_df['Date'].dt.day_name()
 # Distribution over the week days #
 week_days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 week_day_visits = input_data_df['Week Day'].value_counts()
-#plt.bar(x = week_days, height = week_day_visits[week_days])
-#plt.title('Number of Visits made each Week Day')
-#plt.xlabel('Week Days')
-#plt.ylabel('Number of Visits')
-#plt.show()
+plt.bar(x = week_days, height = week_day_visits[week_days])
+plt.title('Number of Visits made each Week Day')
+plt.xlabel('Week Days')
+plt.ylabel('Number of Visits')
+plt.show()
 
 # Adding column Rates of Successful Visits by HCPs #
 succ_visits = input_data_df[input_data_df['Reach'] == 'Ulasildi']['HCP Name'].value_counts()
@@ -86,12 +81,11 @@ input_data_df['Rate of Successful Visits to HCPs'] = input_data_df['Rate of Succ
 
 # Distribution of Success over Week Days #
 week_day_succ = input_data_df[input_data_df['Reach'] == 'Ulasildi']['Week Day'].value_counts()
-#plt.bar(x = week_days, height = week_day_succ[week_days])
-#plt.title('Number of Visits made each Week Day')
-#plt.xlabel('Week Days')
-#plt.ylabel('Number of Visits')
-#plt.show()
-# This shows a balanced distribution
+plt.bar(x = week_days, height = week_day_succ[week_days])
+plt.title('Number of Visits made each Week Day')
+plt.xlabel('Week Days')
+plt.ylabel('Number of Visits')
+plt.show()
 
 # ENCODINGS and SCALINGS #
 
@@ -123,13 +117,13 @@ sc = StandardScaler(with_mean=False)
 X_train[:,28:] = sc.fit_transform(X_train[:,28:])
 X_test[:,28:] = sc.transform(X_test[:,28:])
 
-# Basically what I have done up so far is: After determining the data is sparse regarding HCPs (5678s of them only have 1 visit),
-# I could not encode them one-hot way. Instead, I encoded them with 2 variables, number-of-visits and successful visit rate to a HCP.
+# Basically what I have done up so far is: After determining the data is sparse regarding Customers (5678s of them only have 1 visit),
+# I could not encode them one-hot way. Instead, I encoded them with 2 variables, number-of-visits and successful visit rate to a Customer (HCP).
 # By doing so, I implicitly grouped them by these variables. I also added a weekday column as it made more sense regarding weekly schedules. 
-# If classification models turn out to be insufficient then adding new features (like month of the year, representative success rate) 
+# If classification models turn out to be insufficient then adding new features (like month of the year, sales representative success rate) 
 # can be added. After encoding and scalings data is ready to be trained on for now.
 
-# MACHINE LEARNING MODEL # See the comments under IMPORT section for the whole lists of methods that was tried here.
+# MACHINE LEARNING MODEL #
 
 # Training the model #
 classifier = LogisticRegression(random_state=1)
@@ -148,8 +142,8 @@ print('Test Accuracy: ', accuracy_score(Y_test,Y_pred_test))
 print('-------------------------------')
 
 # These results both show that although overall accuracy may be sufficient, the model does predict 'Ulasilamadi'
-# a lot when the reach was 'Ulasildi'. This is expected since the dataset is very imbalanced between Positives
-# and Negatives.
+# a lot when the reach was 'Ulasildi'. This is expected since the dataset is very imbalanced between Positive
+# and Negative examples.
 
 # HANDLING THE IMBALANCE #
 
@@ -172,12 +166,12 @@ print('Test Accuracy: ', accuracy_score(Y_test,Y_pred_test))
 
 # As it can be seen, when known imbalance solutions are used, although the number of wrongly guessed 'Ulasilmadi'
 # decreases, wrongly guessed 'Ulasildi's increases so overall accuracy stays same. For further testing, 
-# I will try neural networks as dataset is already large
+# I will try neural networks as dataset is large
 
 # NEURAL NETWORK #
 
-#print('-------------------------------')
-#print('Neural Network')
+print('-------------------------------')
+print('Neural Network')
 batch_size = 1024 # TUNE THIS
 train_size = len(Y_train)
 test_size = len(Y_test)
@@ -285,26 +279,26 @@ def train(model, criterion, optimizer, epochs, dataloader, verbose=False): #verb
 #all_preds = []
 
 #with torch.no_grad():
-  for data in train_loader:
-    samples, labels = data
-    predicted = my_model(samples) > 0.5 # Set every probability that is bigger than 0.5 as 'Ulasildi'
-    total += labels.size(0)
-    correct += (predicted == labels).sum().item()
+#  for data in train_loader:
+#    samples, labels = data
+#    predicted = my_model(samples) > 0.5 # Set every probability that is bigger than 0.5 as 'Ulasildi'
+#    total += labels.size(0)
+#    correct += (predicted == labels).sum().item()
 
-  train_acc = correct / total
+#  train_acc = correct / total
 
-  correct = 0
-  total = 0    
-  for data in test_loader:
-    samples, labels = data
-    predicted = my_model(samples) > 0.5 # Set every probability that is bigger than 0.5 as 'Ulasildi'
-    total += labels.size(0)
-    correct += (predicted == labels).sum().item()
+#  correct = 0
+#  total = 0    
+#  for data in test_loader:
+#    samples, labels = data
+#    predicted = my_model(samples) > 0.5 # Set every probability that is bigger than 0.5 as 'Ulasildi'
+#    total += labels.size(0)
+#    correct += (predicted == labels).sum().item()
 
-    all_labels.extend(labels.numpy())   # Store every prediction from the sample to a general var 
-    all_preds.extend(predicted.numpy()) # Store every label from the sample to a general var
+#    all_labels.extend(labels.numpy())   # Store every prediction from the sample to a general var 
+#    all_preds.extend(predicted.numpy()) # Store every label from the sample to a general var
 
-  test_acc = correct / total
+#  test_acc = correct / total
 
 # Calculate confusion matrix #
 #cm = confusion_matrix(all_labels, all_preds)
@@ -325,19 +319,19 @@ def train(model, criterion, optimizer, epochs, dataloader, verbose=False): #verb
 # SCHEDULE #
 
 # First we need to split a week into discrete timeslots for optimization purposes. #
-#print('-------------------------------')
-#print('Max. Dialing time: ', input_data_df['Dialing Time (sec)'].max(), 'seconds') # 6.9
-#print('Max. Talking time: ', input_data_df['Talk Time (sec)'].max(), 'seconds') # 49.99
+print('-------------------------------')
+print('Max. Dialing time: ', input_data_df['Dialing Time (sec)'].max(), 'seconds') # 6.9
+print('Max. Talking time: ', input_data_df['Talk Time (sec)'].max(), 'seconds') # 49.99
 # Total is approximately 60 seconds or 1 minute, So we can leave 1 minute for each talk,
 # i.e., we can set our timeslots 1 minutes apart. However, this would yield a very large dataset.
 
 # !Remember: Activity Time column was transformed to minutes.
 # Checking to see if there is a patern between representatives regarding their work hours
-#print('Earliest Visit time for Representatives: ', input_data_df.groupby('Representative Name')['Activity Time'].min().min()) #480
-#print('Latest Visit time for Representatives: ', input_data_df.groupby('Representative Name')['Activity Time'].max().max()) #1163
+print('Earliest Visit time for Representatives: ', input_data_df.groupby('Representative Name')['Activity Time'].min().min()) #480
+print('Latest Visit time for Representatives: ', input_data_df.groupby('Representative Name')['Activity Time'].max().max()) #1163
 # We can safely assume that everyday starts at min 480 and ends at 1163
 
-#print('Maximum visits made by a representative: ', input_data_df['Representative Name'].value_counts().max()) #1043
+print('Maximum visits made by a representative: ', input_data_df['Representative Name'].value_counts().max()) #1043
 # Even if we have divided a day into 200 slots, that would yield 7 * 200 = 1400 slots which is more than enough to schedule
 # all calls. Further optimization can also be done in a sequential manner within these slots after reaching to a optimal solution.
 # As this problem has 16M decision variables (11897 alignment * 1400 slots), I will use a greedy heuristic.
